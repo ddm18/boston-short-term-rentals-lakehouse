@@ -95,3 +95,16 @@ python3 -m mkdocs build --strict
 ```
 
 The generated `site/` directory is build output and is not source.
+
+## Limitations
+
+- Phase 1 is complete for the NYC TLC taxi data domain, not for the full
+  business roadmap.
+- The deployed cloud infrastructure is not intended to stay continuously
+  running; non-S3 runtime resources are torn down after validation to control
+  cost.
+- The project does not currently operate as a continuously monitored production
+  service with day-to-day live runs.
+- Weather, airport passenger traffic, holidays, events, real-time streaming,
+  and machine learning are documented as roadmap scope, not as current runtime
+  behavior.
