@@ -313,3 +313,18 @@ The project focuses exclusively on:
 
 > Building a robust, versioned, production-like  
 > data foundation for **operational urban mobility analytics**.
+
+---
+
+## 11. Local Validation
+
+Install the runtime and documentation dependencies before running the local
+validation checks:
+
+```bash
+python3 -m pip install -r airflow/requirements.txt
+python3 -m pip install -r docs/requirements.txt
+python3 -m unittest discover -s tests -q
+terraform fmt -check -recursive infra/terraform
+python3 -m mkdocs build --strict
+```
