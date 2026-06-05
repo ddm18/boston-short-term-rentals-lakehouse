@@ -3,9 +3,12 @@
 ## 1. Project Overview
 
 The goal of this project is to build a consolidated and historical data foundation
-for **New York City taxi mobility demand and fare dynamics**, enriched with
-weather information (and later airport traffic data), in order to support
+for **New York City taxi mobility demand and fare dynamics** in order to support
 urban mobility analysis and **recent operational trend monitoring**.
+
+**Phase 1** implements the core taxi lakehouse for yellow taxi trips, green taxi
+trips, and TLC taxi zone reference data. Weather, airport passenger traffic, and
+events remain roadmap domains for later phases.
 
 The platform will enable analysis of:
 
@@ -13,8 +16,9 @@ The platform will enable analysis of:
 - Trip demand patterns
 - Peak vs off-peak behavior
 - Differences across city zones
-- Weather impact on mobility and pricing
-- Airport-related mobility dynamics
+- Airport vs non-airport taxi mobility patterns using TLC zone metadata
+- Roadmap: weather impact on mobility and pricing
+- Roadmap: airport passenger traffic enrichment
 
 The platform focuses primarily on **recent mobility dynamics**, with analytical
 workloads typically covering **the most recent three months of data**, while
@@ -62,8 +66,9 @@ Stakeholders want to:
 - Monitor daily trip counts, valid trip counts, and invalid trip rates
 - Compare hourly pickup demand by TLC taxi zone
 - Track average fare, trip distance, trip duration, tip rate, and speed over time
-- Evaluate whether weather conditions influence trip volume and pricing
-- Analyze airport-related mobility patterns
+- Analyze airport-related taxi patterns using TLC airport zone classification
+- Roadmap: evaluate whether weather conditions influence trip volume and pricing
+- Roadmap: enrich airport-related mobility with passenger traffic data
 
 ### Non-Functional Constraints
 
@@ -180,13 +185,13 @@ must be formalized in the semantic layer.
 
 ### Source Overview
 
-| Domain | Source | Format | Granularity | Ingestion Mode |
-|--------|--------|--------|-------------|----------------|
-| Taxi Trips | NYC TLC | Parquet | Trip-level | Monthly append |
-| Taxi Zones | NYC TLC | GeoJSON / CSV | Static | Static |
-| Weather (Phase 2) | NOAA GHCN | CSV / API | Station × Day | Historical + Incremental |
-| Airport Traffic (Phase 3) | TSA / Aviation data | CSV | Airport × Day | Monthly |
-| Holidays & Events | Public datasets | CSV / API | Event × Date | Incremental |
+| Domain | Source | Format | Granularity | Status |
+|--------|--------|--------|-------------|--------|
+| Taxi Trips | NYC TLC | Parquet | Trip-level | Phase 1 implemented |
+| Taxi Zones | NYC TLC | CSV | Static | Phase 1 implemented |
+| Weather | NOAA GHCN | CSV / API | Station × Day | Phase 2 roadmap |
+| Airport Traffic | TSA / Aviation data | CSV | Airport × Day | Phase 3 roadmap |
+| Holidays & Events | Public datasets | CSV / API | Event × Date | Roadmap |
 
 ### Reference Links
 
@@ -215,19 +220,23 @@ must be formalized in the semantic layer.
 
 ### Fact Table
 
-**Fact_Trips**
+**`trips_v1`**
 
 - One row per trip
 - Base grain: trip-level
-- Surrogate keys referencing dimensions
+- Enriched with TLC pickup and dropoff zone attributes
 
 ### Gold Analytical Outputs
 
 Phase 1 Gold datasets expose both trip-level and aggregated analytical outputs:
 
-- `Fact_Trips`: analytics-ready trip-level dataset
-- `Daily_Metrics`: day-level operational metrics by service
-- `Hourly_Zone_Metrics`: pickup hour x pickup zone metrics by service
+- `trips_v1`: unified analytics-ready trip-level dataset
+- `yellow_trips_v1` and `green_trips_v1`: service-specific trip-level datasets
+- `daily_metrics_v1`: unified day-level operational metrics by service
+- `hourly_zone_metrics_v1`: unified pickup hour x pickup zone metrics by service
+- `yellow_daily_metrics_v1`, `green_daily_metrics_v1`,
+  `yellow_hourly_zone_metrics_v1`, and `green_hourly_zone_metrics_v1`:
+  service-specific aggregate outputs
 
 Representative daily metrics include:
 
@@ -252,14 +261,16 @@ Representative hourly zone metrics include:
 - average speed
 - invalid trip rate
 
-### Dimension Tables
+### Reference And Semantic Columns
 
-- Dim_Time
-- Dim_Zone
-- Dim_Borough
-- Dim_Weather
-- Dim_Airport
-- Dim_Event
+- `dim_taxi_zones_v1` is the Phase 1 canonical TLC taxi zone reference model.
+- Time attributes such as pickup date, hour, week, quarter, season, weekend,
+  and commute peak flags are modeled as derived columns in trip and aggregate
+  outputs rather than as a separate physical time dimension.
+- Borough, service zone, and airport-zone classification are derived from TLC
+  taxi zone metadata.
+- Weather, airport passenger traffic, holidays, and events are not implemented
+  as Phase 1 dimensions.
 
 ### Temporal Modeling & Historical Retention
 
@@ -271,16 +282,20 @@ Representative hourly zone metrics include:
 Historical raw data is preserved indefinitely while analytical
 queries typically focus on **recent operational time windows**.
 
-### Weather Integration
+### Weather Integration (Phase 2 Roadmap)
 
 - Join daily weather observations by trip date
 - Optional hourly alignment
 - Flag extreme weather events
 
-### Airport Integration (Phase 3)
+### Airport Integration
 
 - Identify airport zones
 - Classify airport-related trips
+
+Phase 1 implements airport-zone classification from TLC taxi zone metadata.
+Phase 3 extends this with airport passenger traffic:
+
 - Join with daily airport passenger volumes
 - Compute airport demand index
 
@@ -308,6 +323,9 @@ Out of scope:
 - Demand forecasting models
 - Dynamic pricing engines
 - Simulation frameworks
+- Weather enrichment
+- Airport passenger traffic enrichment
+- Holidays and events enrichment
 
 The project focuses exclusively on:
 
