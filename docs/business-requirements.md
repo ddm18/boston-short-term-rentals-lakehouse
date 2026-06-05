@@ -1,0 +1,308 @@
+# Business Requirements
+
+This page captures the business framing and stakeholder requirements behind the
+NYC Urban Mobility Data Platform. It describes what the platform is meant to
+support before translating those needs into architecture, ingestion, and dbt
+models.
+
+## Project Goal
+
+The goal of this project is to build a consolidated and historical data
+foundation for **New York City taxi mobility demand and fare dynamics** in
+order to support urban mobility analysis and **recent operational trend
+monitoring**.
+
+**Phase 1** implements the core taxi lakehouse for yellow taxi trips, green
+taxi trips, and TLC taxi zone reference data. Weather, airport passenger
+traffic, and events remain roadmap domains for later phases.
+
+The platform enables analysis of:
+
+- Short-term fare trends
+- Trip demand patterns
+- Peak vs off-peak behavior
+- Differences across city zones
+- Airport vs non-airport taxi mobility patterns using TLC zone metadata
+- Roadmap: weather impact on mobility and pricing
+- Roadmap: airport passenger traffic enrichment
+
+The platform focuses primarily on **recent mobility dynamics**, with analytical
+workloads typically covering **the most recent three months of data**, while
+preserving full historical raw data for reproducibility and backfill.
+
+The focus of this project is **data engineering**, not real-time processing or
+machine learning.
+
+The objective is to design a **production-like data platform** with governance,
+historical retention, data contracts, and quality controls.
+
+## Stakeholders
+
+### Primary Stakeholders
+
+- Urban mobility analysts
+- Transportation strategy teams
+- Urban planning observers
+
+### Stakeholder Characteristics
+
+- Non-technical but quantitatively oriented
+- Interested in **trend analysis and behavioral patterns**
+- Require structured and reliable datasets
+- Need reproducibility and reliability
+- Focused on business interpretation rather than raw data
+
+## Business Requirements
+
+Stakeholders want to:
+
+- Understand how taxi fares evolve over recent periods
+- Analyze when demand is higher: hourly, daily, and seasonally
+- Compare mobility behavior across city zones
+- Identify peak congestion periods
+- Monitor short-term demand changes
+- Compare weekday vs weekend demand
+- Monitor daily trip counts, valid trip counts, and invalid trip rates
+- Compare hourly pickup demand by TLC taxi zone
+- Track average fare, trip distance, trip duration, tip rate, and speed over time
+- Analyze airport-related taxi patterns using TLC airport zone classification
+- Roadmap: evaluate whether weather conditions influence trip volume and pricing
+- Roadmap: enrich airport-related mobility with passenger traffic data
+
+### Non-Functional Constraints
+
+- Data does **not need to be real-time**
+- Monthly freshness is sufficient
+- Base granularity must be **trip-level**
+- Historical raw data must be **fully retained**
+- Analytical workloads focus primarily on **recent operational windows**
+- Reproducibility must be guaranteed
+- No manual workflows such as Excel exports
+- Incremental ingestion must be supported
+- Schema evolution must be handled safely
+
+## Key Analytical Dimensions
+
+### Time
+
+- Trip timestamp as the base grain
+- Hour of day
+- Day
+- Week
+- Month
+- Quarter
+- Season
+- Day-over-day comparisons
+- Week-over-week comparisons
+- Month-over-month comparisons
+
+### Geography
+
+- Taxi zones from the official TLC zone reference
+- Borough
+- Airport vs non-airport zones
+- Optional business-defined behavioral clusters derived from official TLC zones
+
+### Trip Characteristics
+
+- Fare amount
+- Trip distance
+- Passenger count
+- Payment type
+- Tip amount
+- Trip duration
+
+### Weather (Phase 2 Roadmap)
+
+- Temperature
+- Precipitation
+- Snow indicators
+- Severe weather flags
+
+### Airport Traffic (Phase 3 Roadmap)
+
+- Passenger arrivals per airport
+- Daily airport traffic volume
+- Airport demand index
+
+## Business Views
+
+### Geographical Interpretation
+
+Phase 1 geographical analysis is anchored on official NYC TLC Taxi Zones.
+These are the native geographical keys available in the trip source through
+pickup and dropoff `LocationID` values.
+
+Primary geographical levels:
+
+- TLC Taxi Zone
+- Borough
+- Airport vs non-airport zone
+
+Examples of valid analytical rollups:
+
+- Borough-level comparisons
+- Airport pickup/dropoff monitoring
+- Zone-to-zone demand comparisons
+- Hourly pickup demand by zone
+
+Business-defined clusters may still be useful for interpretation, but they must
+be implemented as a semantic mapping on top of TLC zones rather than treated as
+native source geography.
+
+Examples of optional semantic rollups:
+
+- Business districts
+- Residential clusters
+- Nightlife clusters
+- Commuter corridors
+
+### Temporal Interpretation
+
+Business-relevant time classifications may include:
+
+- Rush hours
+- Late-night mobility
+- Weekend demand shifts
+- Holiday peaks
+- Severe weather days
+- Summer vs winter patterns
+- Airport high-demand season
+
+Definitions such as **peak demand periods** or **mobility disruptions** must be
+formalized in the semantic layer.
+
+## Data Sources
+
+| Domain | Source | Format | Granularity | Status |
+|--------|--------|--------|-------------|--------|
+| Taxi Trips | NYC TLC | Parquet | Trip-level | Phase 1 implemented |
+| Taxi Zones | NYC TLC | CSV | Static | Phase 1 implemented |
+| Weather | NOAA GHCN | CSV / API | Station x Day | Phase 2 roadmap |
+| Airport Traffic | TSA / Aviation data | CSV | Airport x Day | Phase 3 roadmap |
+| Holidays & Events | Public datasets | CSV / API | Event x Date | Roadmap |
+
+Reference links:
+
+- https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+- https://registry.opendata.aws/nyc-tlc-trip-records-pds/
+- https://www.ncdc.noaa.gov/cdo-web/webservices/v2
+- https://www.tsa.gov/travel/passenger-volumes
+
+## Data Management Principles
+
+- External datasets are treated as upstream providers.
+- Data must be persisted internally.
+- Backfill ingestion must be supported.
+- Monthly incremental ingestion must be automated.
+- Pipelines must be idempotent.
+- Schema evolution must be detected.
+- Data contracts must be enforced in Silver.
+- Quality metrics must be tracked over time.
+- The platform should not depend on ad hoc live upstream queries for normal analysis.
+
+## Data Semantics And Modeling
+
+### Trip-Level Fact
+
+**`trips_v1`**
+
+- One row per trip
+- Base grain: trip-level
+- Enriched with TLC pickup and dropoff zone attributes
+
+### Gold Analytical Outputs
+
+Phase 1 Gold datasets expose both trip-level and aggregated analytical outputs:
+
+- `trips_v1`: unified analytics-ready trip-level dataset
+- `yellow_trips_v1` and `green_trips_v1`: service-specific trip-level datasets
+- `daily_metrics_v1`: unified day-level operational metrics by service
+- `hourly_zone_metrics_v1`: unified pickup hour x pickup zone metrics by service
+- `yellow_daily_metrics_v1`, `green_daily_metrics_v1`,
+  `yellow_hourly_zone_metrics_v1`, and `green_hourly_zone_metrics_v1`:
+  service-specific aggregate outputs
+
+Representative daily metrics include:
+
+- trip count
+- valid trip count
+- weekend trip count
+- invalid trip rate
+- total fare amount
+- average fare amount
+- average trip distance
+- average trip duration
+- average speed
+- average tip percentage
+
+Representative hourly zone metrics include:
+
+- trip count
+- total fare amount
+- average fare amount
+- average trip distance
+- average trip duration
+- average speed
+- invalid trip rate
+
+### Reference And Semantic Columns
+
+- `dim_taxi_zones_v1` is the Phase 1 canonical TLC taxi zone reference model.
+- Time attributes such as pickup date, hour, week, quarter, season, weekend,
+  and commute peak flags are modeled as derived columns in trip and aggregate
+  outputs rather than as a separate physical time dimension.
+- Borough, service zone, and airport-zone classification are derived from TLC
+  taxi zone metadata.
+- Weather, airport passenger traffic, holidays, and events are not implemented
+  as Phase 1 dimensions.
+
+### Temporal Modeling And Historical Retention
+
+- Append-only Bronze layer
+- Partitioning by year/month
+- Reprocessing capability per partition
+- Metadata tracking through source file, ingestion timestamp, and transformation version
+
+Historical raw data is preserved indefinitely while analytical queries
+typically focus on **recent operational time windows**.
+
+### Weather Integration (Phase 2 Roadmap)
+
+- Join daily weather observations by trip date
+- Optional hourly alignment
+- Flag extreme weather events
+
+### Airport Integration
+
+- Identify airport zones
+- Classify airport-related trips
+
+Phase 1 implements airport-zone classification from TLC taxi zone metadata.
+Phase 3 extends this with airport passenger traffic:
+
+- Join with daily airport passenger volumes
+- Compute airport demand index
+
+## Assumptions, Limitations, And Open Questions
+
+- What is the optimal analytical horizon for operational trend monitoring?
+- How should hot vs cold data be managed across layers?
+- How should republished monthly datasets be detected?
+- What defines severe weather disruption?
+- How should behavioral clusters be classified?
+- What data quality thresholds are acceptable?
+- Should airport traffic be treated as a dimension or fact?
+
+## Scope Boundaries
+
+Out of scope for Phase 1:
+
+- Real-time streaming architectures
+- Machine learning pipelines
+- Demand forecasting models
+- Dynamic pricing engines
+- Simulation frameworks
+- Weather enrichment
+- Airport passenger traffic enrichment
+- Holidays and events enrichment
