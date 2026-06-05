@@ -12,6 +12,11 @@ The business framing and customer-style requirements are documented in
 release model are documented in [System Overview](docs/architecture/overview.md)
 and [CI/CD Workflow](docs/architecture/cicd.md).
 
+For the full project documentation, architecture diagrams, ADRs, and business
+context, use the MkDocs site:
+
+https://ddm18.github.io/nyc-taxi-lakehouse/
+
 ## Phase 1 Scope
 
 Implemented:
@@ -77,6 +82,10 @@ Terraform validation in CI initializes bootstrap, `test`, and `prod` stacks with
 `-backend=false`.
 
 ## Documentation
+
+The published documentation site is available at:
+
+https://ddm18.github.io/nyc-taxi-lakehouse/
 
 Build the documentation site locally:
 

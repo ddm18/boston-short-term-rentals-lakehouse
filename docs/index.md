@@ -5,16 +5,25 @@
     pipeline executes, and how the `local`, `test`, and `prod` environments fit
     together.
 
+The project is intentionally organized in phases. The
+[Business Requirements](business-requirements.md) page captures the broader
+customer-style needs and roadmap domains. **Phase 1 is complete** and covers
+the implemented taxi lakehouse for yellow trips, green trips, and TLC taxi zone
+reference data. The architecture pages in this site describe that current
+Phase 1 implementation, not the later weather, airport passenger traffic, or
+events roadmap.
+
 ## Start Here
 
 If you want to understand the platform quickly, read the pages in this order:
 
-1. [System Overview](architecture/overview.md)
-2. [Platform Components](architecture/components.md)
-3. [Pipeline Execution](architecture/pipeline-execution.md)
-4. [Deployment Topology](architecture/deployment-topology.md)
-5. [Environment Model](architecture/environment-model.md)
-6. [CI/CD Workflow](architecture/cicd.md)
+1. [Business Requirements](business-requirements.md)
+2. [System Overview](architecture/overview.md)
+3. [Platform Components](architecture/components.md)
+4. [Pipeline Execution](architecture/pipeline-execution.md)
+5. [Deployment Topology](architecture/deployment-topology.md)
+6. [Environment Model](architecture/environment-model.md)
+7. [CI/CD Workflow](architecture/cicd.md)
 
 ## Platform At A Glance
 
@@ -45,6 +54,9 @@ SI --> QU
 ## Core Ideas
 
 - The platform ingests NYC TLC data at `dataset-month` granularity.
+- The implemented architecture represents the completed Phase 1 scope.
+- Later business domains are documented as roadmap items, not as current
+  runtime behavior.
 - `local` is a developer runtime, not a deployed environment.
 - `test` and `prod` are the deployed AWS environments.
 - The analytical path is layered: `landing -> bronze -> silver -> gold`.
